@@ -1,0 +1,63 @@
+// Déclaration du fournisseur de base de données
+datasource db {
+  provider = "mysql" // ou "postgresql" ou "sqlite"
+  url      = env("DATABASE_URL") // URL de la base de données définie dans .env
+}
+
+// Déclaration du générateur de client Prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Modèle User
+model User {
+  id        Int        @id @default(autoincrement()) // ID unique de l'utilisateur
+  email     String     @unique @db.VarChar(255) // Email unique
+  username  String     @unique @db.VarChar(255) // Nom d'utilisateur unique
+  password  String     @db.VarChar(255) // Mot de passe
+  likes     Like[]     // Relation avec les likes de l'utilisateur
+  favorites Favorite[] // Relation avec les favoris de l'utilisateur
+
+  @@index([email]) // Index sur l'email pour des recherches plus rapides
+}
+
+// Modèle Video
+model Video {
+  id          Int        @id @default(autoincrement()) // ID unique de la vidéo
+  title       String     @db.VarChar(255) // Titre de la vidéo
+  url         String     // URL de la vidéo
+  thumbnail   String     // URL de la miniature
+  duration    String     // Durée de la vidéo
+  views       String     // Nombre de vues
+  date        String     // Date de publication
+  description String     @db.VarChar(1000) // Description de la vidéo
+  createdAt   DateTime   @default(now()) // Date de création
+  updatedAt   DateTime   @updatedAt // Date de mise à jour
+  likes       Like[]     // Relation avec les likes de la vidéo
+  favorites   Favorite[] // Relation avec les favoris de la vidéo
+
+  @@index([title])       // Index sur le titre pour des recherches plus rapides
+  @@index([createdAt])   // Index sur la date de création
+}
+
+// Modèle Like
+model Like {
+  id      Int    @id @default(autoincrement()) // ID unique du like
+  userId  Int    // ID de l'utilisateur qui a liké
+  videoId Int    // ID de la vidéo likée
+  user    User   @relation(fields: [userId], references: [id]) // Relation avec User
+  video   Video  @relation(fields: [videoId], references: [id]) // Relation avec Video
+
+  @@unique([userId, videoId]) // Un utilisateur ne peut liker une vidéo qu'une seule fois
+}
+
+// Modèle Favorite
+model Favorite {
+  id      Int    @id @default(autoincrement()) // ID unique du favori
+  userId  Int    // ID de l'utilisateur qui a ajouté aux favoris
+  videoId Int    // ID de la vidéo ajoutée aux favoris
+  user    User   @relation(fields: [userId], references: [id]) // Relation avec User
+  video   Video  @relation(fields: [videoId], references: [id]) // Relation avec Video
+
+  @@unique([userId, videoId]) // Un utilisateur ne peut ajouter une vidéo aux favoris qu'une seule fois
+}
