@@ -17,6 +17,7 @@ model User {
   password  String     @db.VarChar(255) // Mot de passe
   likes     Like[]     // Relation avec les likes de l'utilisateur
   favorites Favorite[] // Relation avec les favoris de l'utilisateur
+  comments  Comment[]  // Relation avec les commentaires de l'utilisateur
 
   @@index([email]) // Index sur l'email pour des recherches plus rapides
 }
@@ -35,6 +36,7 @@ model Video {
   updatedAt   DateTime   @updatedAt // Date de mise à jour
   likes       Like[]     // Relation avec les likes de la vidéo
   favorites   Favorite[] // Relation avec les favoris de la vidéo
+  comments    Comment[]  // Relation avec les commentaires de la vidéo
 
   @@index([title])       // Index sur le titre pour des recherches plus rapides
   @@index([createdAt])   // Index sur la date de création
@@ -60,4 +62,19 @@ model Favorite {
   video   Video  @relation(fields: [videoId], references: [id]) // Relation avec Video
 
   @@unique([userId, videoId]) // Un utilisateur ne peut ajouter une vidéo aux favoris qu'une seule fois
+}
+
+// Modèle Comment
+model Comment {
+  id        Int      @id @default(autoincrement()) // ID unique du commentaire
+  content   String   @db.VarChar(1000) // Contenu du commentaire
+  userId    Int      // ID de l'utilisateur qui a posté le commentaire
+  videoId   Int      // ID de la vidéo associée
+  createdAt DateTime @default(now()) // Date de création
+  updatedAt DateTime @updatedAt // Date de mise à jour
+  user      User     @relation(fields: [userId], references: [id]) // Relation avec User
+  video     Video    @relation(fields: [videoId], references: [id]) // Relation avec Video
+
+  @@index([userId]) // Index sur l'ID de l'utilisateur
+  @@index([videoId]) // Index sur l'ID de la vidéo
 }

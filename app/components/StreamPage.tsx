@@ -33,34 +33,86 @@ export default function StreamPage() {
   const [likes, setLikes] = useState<boolean[]>([]);
   const [favorites, setFavorites] = useState<boolean[]>([]);
 
-  // Charger les vidéos depuis l'API
+  // Charger les vidéos, les likes et les favoris depuis l'API
   useEffect(() => {
-    const fetchVideos = async () => {
+    const fetchVideosAndInteractions = async () => {
       try {
-        const response = await fetch('/api/video'); // Appel à l'API
-        if (!response.ok) {
+        // Charge les vidéos
+        const videoResponse = await fetch('/api/video');
+        if (!videoResponse.ok) {
           throw new Error('Erreur lors du chargement des vidéos');
         }
-        const result = await response.json(); // Résultat complet de l'API
-        const videos = result.data; // Accéder au tableau de vidéos
+        const videoData = await videoResponse.json();
+        const videos = videoData.data;
 
-        // Vérifiez que `videos` est un tableau
-        if (Array.isArray(videos)) {
-          setPlaylist(videos);
-          setLikes(Array(videos.length).fill(false));
-          setFavorites(Array(videos.length).fill(false));
-        } else {
-          console.error('La réponse de l\'API n\'est pas un tableau:', videos);
+        // Charge les likes pour l'utilisateur connecté
+        const userId = 1; // Remplace par l'ID de l'utilisateur connecté
+        const likesResponse = await fetch(`/api/like?userId=${userId}`);
+        if (!likesResponse.ok) {
+          throw new Error('Erreur lors du chargement des likes');
         }
+        const likesData = await likesResponse.json();
+
+        // Charge les favoris pour l'utilisateur connecté
+        const favoritesResponse = await fetch(`/api/favoris?userId=${userId}`);
+        if (!favoritesResponse.ok) {
+          throw new Error('Erreur lors du chargement des favoris');
+        }
+        const favoritesData = await favoritesResponse.json();
+
+        // Initialise l'état des likes et des favoris
+        const initialLikes = videos.map((video: Video) =>
+          likesData.some((like: { videoId: number }) => like.videoId === video.id)
+        );
+        const initialFavorites = videos.map((video: Video) =>
+          favoritesData.some((favorite: { videoId: number }) => favorite.videoId === video.id)
+        );
+
+        setPlaylist(videos);
+        setLikes(initialLikes);
+        setFavorites(initialFavorites);
       } catch (error) {
-        console.error('Erreur lors du chargement des vidéos', error);
+        console.error('Erreur lors du chargement des données:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchVideos();
+    fetchVideosAndInteractions();
   }, []);
+
+  // Gestion des favoris
+  const handleFavorite = async () => {
+    const currentVideo = playlist[currentVideoIndex];
+    const userId = 1; // Remplace par l'ID de l'utilisateur connecté
+
+    try {
+      // Envoie une requête POST à l'API pour enregistrer le favori
+      const response = await fetch('/api/favoris', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          videoId: currentVideo.id,
+        }),
+      });
+
+      if (response.ok) {
+        // Met à jour l'état local si la requête réussit
+        setFavorites((prevFavorites) => {
+          const newFavorites = [...prevFavorites];
+          newFavorites[currentVideoIndex] = !newFavorites[currentVideoIndex];
+          return newFavorites;
+        });
+      } else {
+        console.error('Erreur lors de l\'enregistrement du favori');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi de la requête:', error);
+    }
+  };
 
   // Gestion de la fin de la vidéo
   const handleEnded = () => {
@@ -83,21 +135,36 @@ export default function StreamPage() {
   };
 
   // Gestion des likes
-  const handleLike = () => {
-    setLikes((prevLikes) => {
-      const newLikes = [...prevLikes];
-      newLikes[currentVideoIndex] = !newLikes[currentVideoIndex];
-      return newLikes;
-    });
-  };
+  const handleLike = async () => {
+    const currentVideo = playlist[currentVideoIndex];
+    const userId = 1; // Remplace par l'ID de l'utilisateur connecté
 
-  // Gestion des favoris
-  const handleFavorite = () => {
-    setFavorites((prevFavorites) => {
-      const newFavorites = [...prevFavorites];
-      newFavorites[currentVideoIndex] = !newFavorites[currentVideoIndex];
-      return newFavorites;
-    });
+    try {
+      // Envoie une requête POST à l'API pour enregistrer le like
+      const response = await fetch('/api/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          videoId: currentVideo.id,
+        }),
+      });
+
+      if (response.ok) {
+        // Met à jour l'état local si la requête réussit
+        setLikes((prevLikes) => {
+          const newLikes = [...prevLikes];
+          newLikes[currentVideoIndex] = !newLikes[currentVideoIndex];
+          return newLikes;
+        });
+      } else {
+        console.error('Erreur lors de l\'enregistrement du like');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi de la requête:', error);
+    }
   };
 
   // Gestion du partage
@@ -226,14 +293,14 @@ export default function StreamPage() {
                   onClick={handleLike}
                   aria-label="J'aime"
                 >
-                  <RiHeartFill className="icon" /> J'aime
+                  <RiHeartFill className="icon" /> {likes[currentVideoIndex] ? 'Liked' : 'Like'}
                 </button>
                 <button
                   className={`favoriteButton ${favorites[currentVideoIndex] ? 'active' : ''}`}
                   onClick={handleFavorite}
                   aria-label="Favoris"
                 >
-                  <RiStarFill className="icon" /> Favoris
+                  <RiStarFill className="icon" /> {favorites[currentVideoIndex] ? 'Favori' : 'Ajouter aux favoris'}
                 </button>
                 <button className="shareButton" onClick={handleShare} aria-label="Partager">
                   <RiShareFill className="icon" /> Partager
@@ -335,441 +402,441 @@ export default function StreamPage() {
       </footer>
 
       <style jsx>{`
-    :root {
-        --background-light: #f9f9f9;
-        --background-dark: #1c1c1c;
-        --text-light: #000;
-        --text-dark: #fff;
-        --button-bg: #0070f3;
-        --button-hover: #005bb5;
-        --modal-bg-light: #ffffff;
-        --modal-bg-dark: #2d2d2d;
-        --modal-text-light: #000;
-        --modal-text-dark: #fff;
-        --close-button-bg-light: #ccc;
-        --close-button-bg-dark: #444;
-        --close-button-hover-light: #999;
-        --close-button-hover-dark: #666;
-    }
-    .light {
-        background-color: var(--background-light);
-        color: var(--text-light);
-    }
-    .dark {
-        background-color: var(--background-dark);
-        color: var(--text-dark);
-    }
-    .container {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        font-family: Arial, sans-serif;
-    }
-    .header {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 10px;
-        border-bottom: 1px solid #ccc;
-    }
-    .logo {
-        width: 150px;
-    }
-    .main {
-        display: flex;
-        flex: 1;
-        padding: 30px 60px;
-        flex-direction: column;
-        margin-bottom: 40px;
-    }
-    .contentWrapper {
-        display: flex;
-        justify-content: space-between;
-        width: 100%;
-        flex: 1;
-        flex-direction: row-reverse;
-    }
-    .videoSection {
-        flex: 3;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        padding-left: 10px;
-        position: relative;
-    }
-    .title {
-        font-size: 2.5rem;
-        text-align: center;
-        margin-bottom: 10px;
-        color: var(--button-bg);
-        width: 100%;
-        font-weight: bold;
-        text-transform: uppercase;
-        padding: 10px 0;
-    }
-    .video {
-        width: 100%;
-        height: 350px;
-        position: relative;
-    }
-    .seekButton {
-        position: absolute;
-        top: 35%;
-        left: 52%;
-        transform: translate(-50%, -50%);
-        display: flex;
-        justify-content: space-between;
-        gap: 90px;
-        width: 900px;
-        z-index: 10;
-    }
-    .seekButton button {
-        padding: 15px;
-        background-color: var(--button-bg);
-        color: var(--text-dark);
-        border: none;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: none;
-    }
-    .seekButton button:active {
-        transform: scale(1);
-    }
-    .videoDetails {
-        margin-top: 20px;
-        width: 100%;
-    }
-    .videoControls {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-    .likeButton, .favoriteButton, .shareButton, .downloadButton, .giftButton {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 16px;
-        background-color: var(--button-bg);
-        color: var(--text-dark);
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: background-color 0.3s ease;
-        text-decoration: none;
-        text-align: center;
-    }
-    .likeButton.active {
-        background-color: #ff4757;
-    }
-    .likeButton.active:hover {
-        background-color: #ff6b81;
-    }
-    .favoriteButton.active {
-        background-color: #ffd700;
-    }
-    .favoriteButton.active:hover {
-        background-color: #ffdf4d;
-    }
-    .likeButton:hover, .favoriteButton:hover, .shareButton:hover, .downloadButton:hover, .giftButton:hover {
-        background-color: var(--button-hover);
-    }
-    .likeButton:active, .favoriteButton:active, .shareButton:active, .downloadButton:active, .giftButton:active {
-        transform: scale(0.95);
-    }
-    .icon {
-        font-size: 1.5rem;
-        color: var(--text-dark);
-    }
-    .videoTitle {
-        font-size: 2rem;
-        font-weight: bold;
-    }
-    .videoViewsDate {
-        font-size: 0.9rem;
-        color: gray;
-        margin-top: 5px;
-    }
-    .videoDescription {
-        font-size: 1rem;
-        margin-top: 10px;
-        color: var(--text-light);
-    }
-    .videoTags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        margin-top: 10px;
-    }
-    .videoTag {
-        font-size: 0.8rem;
-        background-color: var(--button-bg);
-        color: var(--text-dark);
-        padding: 5px 10px;
-        border-radius: 5px;
-    }
-    .commentSection {
-        margin-top: 20px;
-        width: 100%;
-    }
-    .commentTitle {
-        font-size: 1.2rem;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .commentInput {
-        width: 95%;
-        padding: 5px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 1rem;
-        resize: vertical;
-        margin-bottom: 10px;
-    }
-    .light .commentInput {
-        background-color: #ffffff;
-        color: #000000;
-    }
-    .light .commentInput::placeholder {
-        color: #666666;
-    }
-    .dark .commentInput {
-        background-color: #2d2d2d;
-        color: #ffffff;
-    }
-    .dark .commentInput::placeholder {
-        color: #b0b0b0;
-    }
-    .commentButton {
-        padding: 8px 20px;
-        background-color: var(--button-bg);
-        color: var(--text-dark);
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: background-color 0.3s ease;
-    }
-    .commentButton:hover {
-        background-color: var(--button-hover);
-    }
-    .commentButton:active {
-        transform: scale(0.95);
-    }
-    .playlist {
-        flex: 1;
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        max-height: 80vh;
-        padding-right: 20px;
-    }
-    .playlistItem {
-        display: flex;
-        align-items: center;
-        padding: 6px;
-        margin-bottom: 0px;
-        cursor: pointer;
-        border-radius: 10px;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-    }
-    .playlistItem.active {
-        background-color: rgba(0, 112, 243, 0.2);
-        border: 2px solid #0070f3;
-        box-shadow: 0 4px 12px rgba(0, 112, 243, 0.3);
-    }
-    .playlistItem.active:hover {
-        background-color: rgba(0, 112, 243, 0.3);
-        border-color: #005bb5;
-    }
-    .thumbnail {
-        width: 200px;
-        height: 130px;
-        margin-right: 15px;
-        border-radius: 5px;
-        object-fit: cover;
-    }
-    .videoInfo {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-    .videoTitle {
-        font-size: 1rem;
-        color: var(--text-dark);
-        font-weight: bold;
-    }
-    .videoViews,
-    .videoDate,
-    .videoDuration {
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.7);
-    }
-    .footer {
-        padding: 20px 0;
-        text-align: center;
-        border-top: 1px solid #ccc;
-        background-color: var(--background-dark);
-        color: var(--text-light);
-    }
-    .footerText {
-        font-size: 1.2rem;
-        color: #b0b0b0;
-    }
-    .footerLinks {
-        list-style: none;
-        padding: 0;
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        margin-top: 10px;
-    }
-    .footerLink {
-        color: #0070f3;
-        text-decoration: none;
-        font-size: 0.9rem;
-    }
-    .footerLink:hover {
-        text-decoration: underline;
-    }
-    /* Styles pour le modal de partage */
-    .modalOverlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        background-color: rgba(230, 220, 220, 0.41);
-        animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
+        :root {
+            --background-light: #f9f9f9;
+            --background-dark: #1c1c1c;
+            --text-light: #000;
+            --text-dark: #fff;
+            --button-bg: #0070f3;
+            --button-hover: #005bb5;
+            --modal-bg-light: #ffffff;
+            --modal-bg-dark: #2d2d2d;
+            --modal-text-light: #000;
+            --modal-text-dark: #fff;
+            --close-button-bg-light: #ccc;
+            --close-button-bg-dark: #444;
+            --close-button-hover-light: #999;
+            --close-button-hover-dark: #666;
         }
-        to {
-            opacity: 1;
+        .light {
+            background-color: var(--background-light);
+            color: var(--text-light);
         }
-    }
-
-    .modalContent {
-        background-color: ${darkMode ? '#000' : '#2d2d33'};
-        padding: 25px;
-        border-radius: 15px;
-        width: 350px;
-        text-align: center;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        animation: slideIn 0.3s ease;
-        color: rgba(255, 255, 255, 0.9);
-    }
-
-    @keyframes slideIn {
-        from {
-            transform: translateY(-20px);
-            opacity: 0;
+        .dark {
+            background-color: var(--background-dark);
+            color: var(--text-dark);
         }
-        to {
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        .logo {
+            width: 150px;
+        }
+        .main {
+            display: flex;
+            flex: 1;
+            padding: 30px 60px;
+            flex-direction: column;
+            margin-bottom: 40px;
+        }
+        .contentWrapper {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            flex: 1;
+            flex-direction: row-reverse;
+        }
+        .videoSection {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding-left: 10px;
+            position: relative;
+        }
+        .title {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 10px;
+            color: var(--button-bg);
+            width: 100%;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 10px 0;
+        }
+        .video {
+            width: 100%;
+            height: 350px;
+            position: relative;
+        }
+        .seekButton {
+            position: absolute;
+            top: 35%;
+            left: 52%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            justify-content: space-between;
+            gap: 90px;
+            width: 900px;
+            z-index: 10;
+        }
+        .seekButton button {
+            padding: 15px;
+            background-color: var(--button-bg);
+            color: var(--text-dark);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: none;
+        }
+        .seekButton button:active {
+            transform: scale(1);
+        }
+        .videoDetails {
+            margin-top: 20px;
+            width: 100%;
+        }
+        .videoControls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .likeButton, .favoriteButton, .shareButton, .downloadButton, .giftButton {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background-color: var(--button-bg);
+            color: var(--text-dark);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+        }
+        .likeButton.active {
+            background-color: #ff4757;
+        }
+        .likeButton.active:hover {
+            background-color: #ff6b81;
+        }
+        .favoriteButton.active {
+            background-color: #ffd700;
+        }
+        .favoriteButton.active:hover {
+            background-color: #ffdf4d;
+        }
+        .likeButton:hover, .favoriteButton:hover, .shareButton:hover, .downloadButton:hover, .giftButton:hover {
+            background-color: var(--button-hover);
+        }
+        .likeButton:active, .favoriteButton:active, .shareButton:active, .downloadButton:active, .giftButton:active {
+            transform: scale(0.95);
+        }
+        .icon {
+            font-size: 1.5rem;
+            color: var(--text-dark);
+        }
+        .videoTitle {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .videoViewsDate {
+            font-size: 0.9rem;
+            color: gray;
+            margin-top: 5px;
+        }
+        .videoDescription {
+            font-size: 1rem;
+            margin-top: 10px;
+            color: var(--text-light);
+        }
+        .videoTags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .videoTag {
+            font-size: 0.8rem;
+            background-color: var(--button-bg);
+            color: var(--text-dark);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .commentSection {
+            margin-top: 20px;
+            width: 100%;
+        }
+        .commentTitle {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .commentInput {
+            width: 95%;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 10px;
+        }
+        .light .commentInput {
+            background-color: #ffffff;
+            color: #000000;
+        }
+        .light .commentInput::placeholder {
+            color: #666666;
+        }
+        .dark .commentInput {
+            background-color: #2d2d2d;
+            color: #ffffff;
+        }
+        .dark .commentInput::placeholder {
+            color: #b0b0b0;
+        }
+        .commentButton {
+            padding: 8px 20px;
+            background-color: var(--button-bg);
+            color: var(--text-dark);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+        }
+        .commentButton:hover {
+            background-color: var(--button-hover);
+        }
+        .commentButton:active {
+            transform: scale(0.95);
+        }
+        .playlist {
+            flex: 1;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 80vh;
+            padding-right: 20px;
+        }
+        .playlistItem {
+            display: flex;
+            align-items: center;
+            padding: 6px;
+            margin-bottom: 0px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .playlistItem.active {
+            background-color: rgba(0, 112, 243, 0.2);
+            border: 2px solid #0070f3;
+            box-shadow: 0 4px 12px rgba(0, 112, 243, 0.3);
+        }
+        .playlistItem.active:hover {
+            background-color: rgba(0, 112, 243, 0.3);
+            border-color: #005bb5;
+        }
+        .thumbnail {
+            width: 200px;
+            height: 130px;
+            margin-right: 15px;
+            border-radius: 5px;
+            object-fit: cover;
+        }
+        .videoInfo {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .videoTitle {
+            font-size: 1rem;
+            color: var(--text-dark);
+            font-weight: bold;
+        }
+        .videoViews,
+        .videoDate,
+        .videoDuration {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .footer {
+            padding: 20px 0;
+            text-align: center;
+            border-top: 1px solid #ccc;
+            background-color: var(--background-dark);
+            color: var(--text-light);
+        }
+        .footerText {
+            font-size: 1.2rem;
+            color: #b0b0b0;
+        }
+        .footerLinks {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .footerLink {
+            color: #0070f3;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .footerLink:hover {
+            text-decoration: underline;
+        }
+        /* Styles pour le modal de partage */
+        .modalOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            background-color: rgba(230, 220, 220, 0.41);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modalContent {
+            background-color: ${darkMode ? '#000' : '#2d2d33'};
+            padding: 25px;
+            border-radius: 15px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modalTitle {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: ${darkMode ? 'var(--modal-text-dark)' : 'var(--modal-text-light)'};
+        }
+
+        .shareOptions {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .shareOptionButton {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background-color: var(--button-bg);
+            color: var(--text-dark);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            text-decoration: none;
+        }
+
+        .shareOptionButton:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-2px);
+        }
+
+        .shareOptionButton:active {
             transform: translateY(0);
-            opacity: 1;
         }
-    }
 
-    .modalTitle {
-        font-size: 1.5rem;
-        margin-bottom: 20px;
-        color: ${darkMode ? 'var(--modal-text-dark)' : 'var(--modal-text-light)'};
-    }
+        .shareIcons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
 
-    .shareOptions {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 20px;
-    }
+        .shareIconButton {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            background-color: var(--button-bg);
+            color: var(--text-dark);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 2.5rem;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            text-decoration: none;
+            gap: 5px;
+        }
 
-    .shareOptionButton {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        background-color: var(--button-bg);
-        color: var(--text-dark);
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-        transition: background-color 0.3s ease, transform 0.2s ease;
-        text-decoration: none;
-    }
+        .shareIconButton:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-2px);
+        }
 
-    .shareOptionButton:hover {
-        background-color: var(--button-hover);
-        transform: translateY(-2px);
-    }
+        .shareIconButton:active {
+            transform: translateY(0);
+        }
 
-    .shareOptionButton:active {
-        transform: translateY(0);
-    }
+        .icon {
+            font-size: 2rem;
+            color: var(--text-dark);
+        }
 
-    .shareIcons {
-        display: flex;
-        justify-content: center;
-        gap: 15px;
-    }
+        .closeModalButton {
+            padding: 10px 20px;
+            background-color: ${darkMode ? 'var(--close-button-bg-dark)' : 'var(--close-button-bg-light)'};
+            color: ${darkMode ? 'var(--modal-text-dark)' : 'var(--modal-text-light)'};
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
 
-    .shareIconButton {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 15px;
-        background-color: var(--button-bg);
-        color: var(--text-dark);
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 2.5rem;
-        transition: background-color 0.3s ease, transform 0.2s ease;
-        text-decoration: none;
-        gap: 5px;
-    }
-
-    .shareIconButton:hover {
-        background-color: var(--button-hover);
-        transform: translateY(-2px);
-    }
-
-    .shareIconButton:active {
-        transform: translateY(0);
-    }
-
-    .icon {
-        font-size: 2rem;
-        color: var(--text-dark);
-    }
-
-    .closeModalButton {
-        padding: 10px 20px;
-        background-color: ${darkMode ? 'var(--close-button-bg-dark)' : 'var(--close-button-bg-light)'};
-        color: ${darkMode ? 'var(--modal-text-dark)' : 'var(--modal-text-light)'};
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-        transition: background-color 0.3s ease;
-    }
-
-    .closeModalButton:hover {
-        background-color: ${darkMode ? 'var(--close-button-hover-dark)' : 'var(--close-button-hover-light)'};
-    }
-`}</style>
+        .closeModalButton:hover {
+            background-color: ${darkMode ? 'var(--close-button-hover-dark)' : 'var(--close-button-hover-light)'};
+        }
+      `}</style>
     </div>
   );
 }
