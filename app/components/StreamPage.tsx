@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic'; // Import dynamique pour ReactPlayer
 import { FaLink, FaLinkedin, FaFacebookSquare, FaTwitterSquare, FaWhatsappSquare, FaEnvelopeSquare } from 'react-icons/fa';
-import { RiShareFill, RiDownloadFill, RiHeartFill, RiSendPlaneFill, RiStarFill } from 'react-icons/ri';
+import { RiShareFill, RiDownloadFill, RiHeartFill, RiSendPlaneFill, RiStarFill, RiDeleteBinFill } from 'react-icons/ri';
 
 // Définition de l'interface Video
 interface Video {
@@ -16,6 +16,18 @@ interface Video {
   description: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Définition de l'interface Comment
+interface Comment {
+  id: number;
+  content: string;
+  userId: number;
+  videoId: number;
+  createdAt: string;
+  user: {
+    username: string;
+  };
 }
 
 // Chargement dynamique de ReactPlayer avec SSR désactivé
@@ -32,8 +44,10 @@ export default function StreamPage() {
   const [loading, setLoading] = useState(true);
   const [likes, setLikes] = useState<boolean[]>([]);
   const [favorites, setFavorites] = useState<boolean[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]); // État pour les commentaires
+  const [newComment, setNewComment] = useState(''); // État pour le nouveau commentaire
 
-  // Charger les vidéos, les likes et les favoris depuis l'API
+  // Charger les vidéos, les likes, les favoris et les commentaires depuis l'API
   useEffect(() => {
     const fetchVideosAndInteractions = async () => {
       try {
@@ -73,6 +87,7 @@ export default function StreamPage() {
         setFavorites(initialFavorites);
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
+        alert('Erreur lors du chargement des données. Veuillez réessayer.');
       } finally {
         setLoading(false);
       }
@@ -81,13 +96,92 @@ export default function StreamPage() {
     fetchVideosAndInteractions();
   }, []);
 
+  // Charger les commentaires pour la vidéo actuelle
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`/api/comments?videoId=${playlist[currentVideoIndex].id}`);
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des commentaires');
+      }
+      const data = await response.json();
+      setComments(data);
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Erreur lors du chargement des commentaires. Veuillez réessayer.');
+    }
+  };
+
+  // Ajouter un nouveau commentaire
+  const handleAddComment = async () => {
+    if (!newComment.trim()) {
+      alert('Le commentaire ne peut pas être vide.');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: newComment,
+          userId: 1, // Remplacez par l'ID de l'utilisateur connecté
+          videoId: playlist[currentVideoIndex].id,
+        }),
+      });
+
+      if (response.ok) {
+        const addedComment = await response.json();
+        setComments((prevComments) => [addedComment, ...prevComments]); // Ajouter le nouveau commentaire à la liste
+        setNewComment(''); // Réinitialiser le champ de saisie
+        alert('Commentaire ajouté avec succès ');
+      } else {
+        console.error('Erreur lors de l\'ajout du commentaire');
+        alert('Erreur lors de l\'ajout du commentaire. Veuillez réessayer.');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('Une erreur est survenue lors de l\'ajout du commentaire.');
+    }
+  };
+
+  // Supprimer un commentaire
+  const handleDeleteAllComments = async () => {
+    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer  le commentaire ?');
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch('/api/comments', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      const result = await response.json();
+      alert(result.message); // Affiche un message de succès
+      setComments([]); // Réinitialise la liste des commentaires dans l'état local
+    } catch (error: any) {
+      console.error('Erreur lors de la suppression des commentaires :', error);
+      alert('Une erreur est survenue lors de la suppression des commentaires.');
+    }
+  };
+
+  // Charger les commentaires lorsque la vidéo change
+  useEffect(() => {
+    if (playlist.length > 0) {
+      fetchComments();
+    }
+  }, [currentVideoIndex, playlist]);
+
   // Gestion des favoris
   const handleFavorite = async () => {
     const currentVideo = playlist[currentVideoIndex];
     const userId = 1; // Remplace par l'ID de l'utilisateur connecté
 
     try {
-      // Envoie une requête POST à l'API pour enregistrer le favori
       const response = await fetch('/api/favoris', {
         method: 'POST',
         headers: {
@@ -100,7 +194,6 @@ export default function StreamPage() {
       });
 
       if (response.ok) {
-        // Met à jour l'état local si la requête réussit
         setFavorites((prevFavorites) => {
           const newFavorites = [...prevFavorites];
           newFavorites[currentVideoIndex] = !newFavorites[currentVideoIndex];
@@ -108,9 +201,11 @@ export default function StreamPage() {
         });
       } else {
         console.error('Erreur lors de l\'enregistrement du favori');
+        alert('Erreur lors de l\'enregistrement du favori. Veuillez réessayer.');
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi de la requête:', error);
+      alert('Une erreur est survenue lors de l\'enregistrement du favori.');
     }
   };
 
@@ -140,7 +235,6 @@ export default function StreamPage() {
     const userId = 1; // Remplace par l'ID de l'utilisateur connecté
 
     try {
-      // Envoie une requête POST à l'API pour enregistrer le like
       const response = await fetch('/api/like', {
         method: 'POST',
         headers: {
@@ -153,7 +247,6 @@ export default function StreamPage() {
       });
 
       if (response.ok) {
-        // Met à jour l'état local si la requête réussit
         setLikes((prevLikes) => {
           const newLikes = [...prevLikes];
           newLikes[currentVideoIndex] = !newLikes[currentVideoIndex];
@@ -161,9 +254,11 @@ export default function StreamPage() {
         });
       } else {
         console.error('Erreur lors de l\'enregistrement du like');
+        alert('Erreur lors de l\'enregistrement du like. Veuillez réessayer.');
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi de la requête:', error);
+      alert('Une erreur est survenue lors de l\'enregistrement du like.');
     }
   };
 
@@ -177,10 +272,11 @@ export default function StreamPage() {
     if (typeof window !== 'undefined') {
       const currentVideo = playlist[currentVideoIndex];
       navigator.clipboard
-        .writeText(currentVideo.url) // Utilisez l'URL de la vidéo comme lien de partage
+        .writeText(currentVideo.url)
         .then(() => {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
+          alert('Lien copié avec succès !');
         })
         .catch(() => alert("Erreur lors de la copie du lien"));
     }
@@ -196,6 +292,7 @@ export default function StreamPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      alert('Téléchargement de la vidéo démarré.');
     }
   };
 
@@ -324,8 +421,30 @@ export default function StreamPage() {
                   className="commentInput"
                   placeholder="Ajouter un commentaire..."
                   rows={3}
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
                 />
-                <button className="commentButton">Publier</button>
+                <button className="commentButton" onClick={handleAddComment}>
+                  Publier
+                </button>
+                <div className="commentsList">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="commentItem">
+                      <p className="commentUser">{comment.user?.username || 'Anonyme'}</p>
+                      <p className="commentContent">{comment.content}</p>
+                      <p className="commentDate">
+                        {new Date(comment.createdAt).toLocaleDateString()}
+                      </p>
+                      <button
+                        className="deleteCommentButton"
+                        onClick={() => handleDeleteAllComments()}
+                        aria-label="Supprimer le commentaire"
+                      >
+                        <RiDeleteBinFill className="icon" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -589,7 +708,7 @@ export default function StreamPage() {
         }
         .commentInput {
             width: 95%;
-            padding: 5px;
+            padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 1rem;
@@ -626,6 +745,42 @@ export default function StreamPage() {
         }
         .commentButton:active {
             transform: scale(0.95);
+        }
+        .commentsList {
+            margin-top: 20px;
+        }
+        .commentItem {
+            background-color: ${darkMode ? '#2d2d2d' : '#f9f9f9'};
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .commentUser {
+            font-weight: bold;
+            color: ${darkMode ? '#0070f3' : '#005bb5'};
+        }
+        .commentContent {
+            margin-top: 5px;
+            color: ${darkMode ? '#fff' : '#000'};
+        }
+        .commentDate {
+            font-size: 0.8rem;
+            color: gray;
+            margin-top: 5px;
+        }
+        .deleteCommentButton {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: ${darkMode ? '#fff' : '#000'};
+            font-size: 1.2rem;
+            transition: color 0.3s ease;
+        }
+        .deleteCommentButton:hover {
+            color: #ff4757;
         }
         .playlist {
             flex: 1;
