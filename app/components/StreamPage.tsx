@@ -147,20 +147,13 @@ export default function StreamPage() {
   };
 
   // Supprimer un commentaire
-  const handleDeleteAllComments = async (id: number) => {
+  const handleDeleteAllComments = async () => {
     const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer  le commentaire ?');
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(`/api/comments/${id}`, {
+      const response = await fetch('/api/comments', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: id, // Remplacez par l'ID de l'utilisateur connecté
-        
-        }),
       });
 
       if (!response.ok) {
@@ -444,7 +437,7 @@ export default function StreamPage() {
                       </p>
                       <button
                         className="deleteCommentButton"
-                        onClick={() => handleDeleteAllComments(comment.id)}
+                        onClick={() => handleDeleteAllComments()}
                         aria-label="Supprimer le commentaire"
                       >
                         <RiDeleteBinFill className="icon" />
