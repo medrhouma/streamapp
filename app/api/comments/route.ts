@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
 // Fonction utilitaire pour valider les paramètres
@@ -18,6 +19,7 @@ function validateParams(params: Record<string, any>, requiredFields: string[]) {
 export async function POST(request: Request) {
   try {
     const { content, userId, videoId } = await request.json();
+
     // Validation des champs requis
     const validationError = validateParams({ content, userId, videoId }, ['content', 'userId', 'videoId']);
     if (validationError) return validationError;
@@ -59,12 +61,16 @@ export async function GET(request: Request) {
     const videoId = searchParams.get('videoId');
 
     // Validation du paramètre videoId
-    const validationError = validateParams({ videoId }, ['videoId']);
-    if (validationError) return validationError;
+    if (!videoId) {
+      return NextResponse.json(
+        { error: 'Le paramètre videoId est requis' },
+        { status: 400 }
+      );
+    }
 
     // Récupérer les commentaires de la vidéo
     const comments = await prisma.comment.findMany({
-      where: { videoId: parseInt(videoId!) },
+      where: { videoId: parseInt(videoId) },
       include: { user: true }, // Inclure les informations de l'utilisateur
     });
 
@@ -78,14 +84,14 @@ export async function GET(request: Request) {
   }
 }
 
-// DELETE : Supprimer un commentaire
+// DELETE : Supprimer tous les commentaires
 export async function DELETE(request: Request) {
   try {
     // Supprimer tous les commentaires
     await prisma.comment.deleteMany();
 
     return NextResponse.json(
-      { message: 'Tous les commentaires ont été supprimés avec succès' }, // Message sans alerte
+      { message: 'Tous les commentaires ont été supprimés avec succès' },
       { status: 200 }
     );
   } catch (error: any) {
