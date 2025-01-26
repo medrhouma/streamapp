@@ -3,8 +3,6 @@
       "env": {
         "PRISMA_GENERATE": "true"
       },
-      "commands": {
-        "build": "prisma generate && next build"
-      }
+      "command": "prisma generate && next build"
     }
   }
