@@ -135,7 +135,7 @@ export default function StreamPage() {
         const addedComment = await response.json();
         setComments((prevComments) => [addedComment, ...prevComments]); // Ajouter le nouveau commentaire à la liste
         setNewComment(''); // Réinitialiser le champ de saisie
-        alert('Commentaire ajouté avec succès ');
+        
       } else {
         console.error('Erreur lors de l\'ajout du commentaire');
         alert('Erreur lors de l\'ajout du commentaire. Veuillez réessayer.');
