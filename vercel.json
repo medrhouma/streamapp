@@ -1,8 +1,0 @@
-{
-    "build": {
-      "env": {
-        "PRISMA_GENERATE": "true"
-      },
-      "command": "next build"
-    }
-  }
