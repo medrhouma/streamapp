@@ -97,28 +97,38 @@ export default function StreamPage() {
   }, []);
 
   // Charger les commentaires pour la vidéo actuelle
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
-      const response = await fetch(`/api/comments?videoId=${playlist[currentVideoIndex].id}`);
+      const videoId = playlist[currentVideoIndex]?.id;
+      if (!videoId) {
+        throw new Error('ID de la vidéo non trouvé');
+      }
+  
+      const response = await fetch(`/api/comments?videoId=${videoId}`);
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des commentaires');
       }
+  
       const data = await response.json();
       setComments(data);
     } catch (error) {
       console.error('Erreur:', error);
       alert('Erreur lors du chargement des commentaires. Veuillez réessayer.');
     }
-  };
-
-  // Ajouter un nouveau commentaire
+  }, [playlist, currentVideoIndex]);
+  
   const handleAddComment = async () => {
     if (!newComment.trim()) {
       alert('Le commentaire ne peut pas être vide.');
       return;
     }
-
+  
     try {
+      const videoId = playlist[currentVideoIndex]?.id;
+      if (!videoId) {
+        throw new Error('ID de la vidéo non trouvé');
+      }
+  
       const response = await fetch('/api/comments', {
         method: 'POST',
         headers: {
@@ -127,15 +137,14 @@ export default function StreamPage() {
         body: JSON.stringify({
           content: newComment,
           userId: 1, // Remplacez par l'ID de l'utilisateur connecté
-          videoId: playlist[currentVideoIndex].id,
+          videoId: videoId,
         }),
       });
-
+  
       if (response.ok) {
         const addedComment = await response.json();
         setComments((prevComments) => [addedComment, ...prevComments]); // Ajouter le nouveau commentaire à la liste
         setNewComment(''); // Réinitialiser le champ de saisie
-        
       } else {
         console.error('Erreur lors de l\'ajout du commentaire');
         alert('Erreur lors de l\'ajout du commentaire. Veuillez réessayer.');
@@ -145,37 +154,34 @@ export default function StreamPage() {
       alert('Une erreur est survenue lors de l\'ajout du commentaire.');
     }
   };
-
-  // Supprimer un commentaire
+  
   const handleDeleteAllComments = async () => {
-    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer  le commentaire ?');
+    const confirmDelete = window.confirm('Êtes-vous sûr de vouloir supprimer tous les commentaires ?');
     if (!confirmDelete) return;
-
+  
     try {
       const response = await fetch('/api/comments', {
         method: 'DELETE',
       });
-
+  
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
-
+  
       const result = await response.json();
       alert(result.message); // Affiche un message de succès
       setComments([]); // Réinitialise la liste des commentaires dans l'état local
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erreur lors de la suppression des commentaires :', error);
       alert('Une erreur est survenue lors de la suppression des commentaires.');
     }
   };
-
-  // Charger les commentaires lorsque la vidéo change
+  
   useEffect(() => {
-    if (playlist.length > 0) {
+    if (playlist.length > 0 && playlist[currentVideoIndex]?.id) {
       fetchComments();
     }
-  }, [currentVideoIndex, playlist]);
-
+  }, [currentVideoIndex, playlist, fetchComments]);
   // Gestion des favoris
   const handleFavorite = async () => {
     const currentVideo = playlist[currentVideoIndex];
@@ -995,3 +1001,4 @@ export default function StreamPage() {
     </div>
   );
 }
+import { useCallback } from 'react';
