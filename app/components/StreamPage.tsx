@@ -403,13 +403,13 @@ export default function StreamPage() {
                   onClick={handleFavorite}
                   aria-label="Favoris"
                 >
-                  <RiStarFill className="icon" /> {favorites[currentVideoIndex] ? 'Favori' : 'Ajouter aux favoris'}
+                  <RiStarFill className="icon" /> {favorites[currentVideoIndex] ? 'Favorite' : 'Add to favorites'}
                 </button>
                 <button className="shareButton" onClick={handleShare} aria-label="Partager">
-                  <RiShareFill className="icon" /> Partager
+                  <RiShareFill className="icon" />Share
                 </button>
                 <button className="downloadButton" onClick={handleDownload} aria-label="Télécharger">
-                  <RiDownloadFill className="icon" /> Télécharger
+                  <RiDownloadFill className="icon" /> Download
                 </button>
                 <a href="/gift" className="giftButton">
                   <RiSendPlaneFill className="icon" /> Send Gift
@@ -422,16 +422,16 @@ export default function StreamPage() {
               <p className="videoDescription">{playlist[currentVideoIndex]?.description}</p>
               {/* Zone de commentaire */}
               <div className="commentSection">
-                <h3 className="commentTitle">Commentaires</h3>
+                <h3 className="commentTitle">Comments</h3>
                 <textarea
                   className="commentInput"
-                  placeholder="Ajouter un commentaire..."
+                  placeholder="add a comment..."
                   rows={3}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                 />
                 <button className="commentButton" onClick={handleAddComment}>
-                  Publier
+                  Publish
                 </button>
                 <div className="commentsList">
                   {comments.map((comment) => (
