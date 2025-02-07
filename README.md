@@ -21,8 +21,8 @@ RM Stream est une plateforme de streaming vidéo moderne et performante, constru
 - **Prisma** : ORM moderne pour la gestion de la base de données.
 - **Tailwind CSS** : Framework CSS utilitaire pour un design réactif et personnalisable.
 - **React Player** : Bibliothèque pour la lecture de vidéos.
-- **MySQL/PostgreSQL** : Base de données relationnelle pour stocker les données.
-- **NextAuth.js** : Authentification sécurisée pour les utilisateurs.
+- **MySQL** : Base de données relationnelle pour stocker les données.
+
 
 ---
 
