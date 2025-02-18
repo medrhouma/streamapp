@@ -460,13 +460,13 @@ export default function StreamPage() {
       {/* Modal de partage */}
       {showShareModal && (
         <div className="modalOverlay">
-          <div className="modalContent">
-            <h2 className="modalTitle">Partager la vidéo</h2>
-            <div className="shareOptions">
-              <button onClick={handleCopyLink} className="shareOptionButton">
-                <FaLink className="icon" />
-                <span>{copied ? "Lien copié !" : "Copier le lien"}</span>
-              </button>
+        <div className="modalContent">
+          <h2 className="modalTitle">Share the video</h2>
+          <div className="shareOptions">
+            <button onClick={handleCopyLink} className="shareOptionButton">
+              <FaLink className="icon" />
+              <span>{copied ? "Link copied!" : "Copy link"}</span>
+            </button>
             </div>
             <div className="shareIcons">
               <a
@@ -511,7 +511,7 @@ export default function StreamPage() {
               </a>
             </div>
             <button onClick={handleCloseModal} className="closeModalButton">
-              &times; Fermer
+              &times; Close
             </button>
           </div>
         </div>
