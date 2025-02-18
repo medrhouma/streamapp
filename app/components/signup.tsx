@@ -27,6 +27,12 @@ const Signup = () => {
       return;
     }
 
+    // Vérification des critères de sécurité du mot de passe
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+      setError('Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, and a number.');
+      return;
+    }
+
     if (!acceptedTerms) {
       setError('You must accept the terms and conditions.');
       return;
